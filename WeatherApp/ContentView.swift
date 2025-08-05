@@ -6,81 +6,99 @@
 //
 
 import SwiftUI
-import CoreData
 
 struct ContentView: View {
-    @Environment(\.managedObjectContext) private var viewContext
-
-    @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-        animation: .default)
-    private var items: FetchedResults<Item>
+    @State private var zipCode: String = ""
+    @State private var weather: WeatherResponse?
+    @State private var isLoading = false
+    @State private var errorMessage: String?
 
     var body: some View {
-        NavigationView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-                    } label: {
-                        Text(item.timestamp!, formatter: itemFormatter)
+        ZStack {
+            LinearGradient(colors: [Color.blue.opacity(0.7), Color.white], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+
+            VStack(spacing: 30) {
+                Text("☁️ Weather Now")
+                    .font(.largeTitle)
+                    .bold()
+                    .foregroundColor(.white)
+                    .padding(.top, 50)
+
+                TextField("Enter ZIP Code", text: $zipCode)
+                    .keyboardType(.numberPad)
+                    .padding()
+                    .background(Color.white.opacity(0.9))
+                    .cornerRadius(12)
+                    .shadow(radius: 3)
+                    .padding(.horizontal, 40)
+
+                Button(action: fetchWeather) {
+                    Text("Check Weather")
+                        .bold()
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .padding(.horizontal, 40)
+                }
+
+                if isLoading {
+                    ProgressView("Fetching...")
+                        .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                }
+
+                if let weather = weather {
+                    VStack(spacing: 12) {
+                        Text("\(weather.current.temp_c, specifier: "%.1f")°C")
+                            .font(.system(size: 48, weight: .bold))
+                            .foregroundColor(.white)
+
+                        Text(weather.current.condition.text)
+                            .font(.title3)
+                            .foregroundColor(.white)
+
+                        AsyncImage(url: URL(string: "https:\(weather.current.condition.icon)")) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                        } placeholder: {
+                            ProgressView()
+                        }
+                        .frame(width: 100, height: 100)
                     }
                 }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
+
+                if let errorMessage = errorMessage {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .font(.body)
+                        .padding(.top, 10)
                 }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-            Text("Select an item")
-        }
-    }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+                Spacer()
             }
         }
     }
 
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
+    func fetchWeather() {
+        guard !zipCode.isEmpty else {
+            errorMessage = "Please enter a ZIP code."
+            return
+        }
 
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+        isLoading = true
+        errorMessage = nil
+        weather = nil
+
+        WeatherService().fetchWeather(zip: zipCode) { result in
+            isLoading = false
+            if let result = result {
+                self.weather = result
+            } else {
+                self.errorMessage = "Failed to fetch weather."
             }
         }
     }
-}
-
-private let itemFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .short
-    formatter.timeStyle = .medium
-    return formatter
-}()
-
-#Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
 }
