@@ -9,9 +9,17 @@ import Foundation
 
 struct WeatherResponse: Codable {
     let current: CurrentWeather
+    let location: CurrentLocation
+}
+
+struct CurrentLocation: Codable {
+    let name: String
+    let region: String
+    let country: String
 }
 
 struct CurrentWeather: Codable {
+    let temp_f: Double
     let temp_c: Double
     let condition: WeatherCondition
 }

@@ -15,61 +15,88 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Color.blue.opacity(0.7), Color.white], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [Color.blue.opacity(0.85), Color.cyan.opacity(0.5)],
+                           startPoint: .topLeading,
+                           endPoint: .bottomTrailing)
                 .ignoresSafeArea()
 
-            VStack(spacing: 30) {
+            VStack(spacing: 25) {
+                // Title
                 Text("☁️ Weather Now")
-                    .font(.largeTitle)
-                    .bold()
+                    .font(.system(size: 36, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.top, 50)
 
+                // ZIP code input
                 TextField("Enter ZIP Code", text: $zipCode)
                     .keyboardType(.numberPad)
                     .padding()
-                    .background(Color.white.opacity(0.9))
-                    .cornerRadius(12)
-                    .shadow(radius: 3)
+                    .background(Color.white.opacity(0.95))
+                    .cornerRadius(14)
+                    .shadow(radius: 4)
                     .padding(.horizontal, 40)
 
+                // Weather fetch button
                 Button(action: fetchWeather) {
                     Text("Check Weather")
-                        .bold()
-                        .frame(maxWidth: .infinity)
+                        .font(.headline)
                         .padding()
-                        .background(Color.blue)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.indigo)
                         .foregroundColor(.white)
-                        .cornerRadius(12)
-                        .padding(.horizontal, 40)
+                        .cornerRadius(14)
+                        .shadow(radius: 3)
+                        .scaleEffect(isLoading ? 0.98 : 1.0)
+                        .animation(.easeInOut(duration: 0.15), value: isLoading)
                 }
+                .padding(.horizontal, 40)
 
+                // Loading state
                 if isLoading {
                     ProgressView("Fetching...")
-                        .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 }
 
+                // Weather display card
                 if let weather = weather {
-                    VStack(spacing: 12) {
-                        Text("\(weather.current.temp_c, specifier: "%.1f")°C")
-                            .font(.system(size: 48, weight: .bold))
+                    VStack(spacing: 16) {
+                        Text("\(weather.location.name), \(weather.location.region)")
+                            .font(.title2)
                             .foregroundColor(.white)
 
-                        Text(weather.current.condition.text)
-                            .font(.title3)
-                            .foregroundColor(.white)
+                        HStack(alignment: .center, spacing: 20) {
+                            AsyncImage(url: URL(string: "https:\(weather.current.condition.icon)")) { image in
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                            } placeholder: {
+                                ProgressView()
+                            }
+                            .frame(width: 80, height: 80)
 
-                        AsyncImage(url: URL(string: "https:\(weather.current.condition.icon)")) { image in
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                        } placeholder: {
-                            ProgressView()
+                            VStack(alignment: .leading) {
+                                Text("\(weather.current.temp_f, specifier: "%.1f")°F")
+                                    .font(.system(size: 42, weight: .bold))
+                                    .foregroundColor(.white)
+
+                                Text(weather.current.condition.text)
+                                    .font(.headline)
+                                    .foregroundColor(.white.opacity(0.9))
+                            }
                         }
-                        .frame(width: 100, height: 100)
+
+//                        Text(weather.location.country)
+//                            .foregroundColor(.white.opacity(0.8))
+//                            .font(.subheadline)
                     }
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(20)
+                    .shadow(radius: 10)
+                    .padding(.horizontal, 40)
                 }
 
+                // Error message
                 if let errorMessage = errorMessage {
                     Text(errorMessage)
                         .foregroundColor(.red)
